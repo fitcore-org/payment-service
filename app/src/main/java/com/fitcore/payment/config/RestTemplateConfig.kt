@@ -10,23 +10,27 @@ import org.springframework.web.client.RestTemplate
 
 @Configuration
 class RestTemplateConfig {
-
     @Bean
     fun restTemplate(): RestTemplate {
-        val client = HttpClients.custom()
-            .addRequestInterceptorLast(HttpRequestInterceptor { request, entity, context ->
-                println("HTTP REQUEST: ${request.method} ${request.requestUri}")
-                request.headers.forEach { header ->
-                    println("HEADER: ${header.name}: ${header.value}")
-                }
-            })
-            .addResponseInterceptorLast(HttpResponseInterceptor { response, entity, context ->
-                println("HTTP RESPONSE: ${response.code} ${response.reasonPhrase}")
-                response.headers.forEach { header ->
-                    println("HEADER: ${header.name}: ${header.value}")
-                }
-            })
-            .build()
+        val client =
+            HttpClients.custom()
+                .addRequestInterceptorLast(
+                    HttpRequestInterceptor { request, entity, context ->
+                        println("HTTP REQUEST: ${request.method} ${request.requestUri}")
+                        request.headers.forEach { header ->
+                            println("HEADER: ${header.name}: ${header.value}")
+                        }
+                    },
+                )
+                .addResponseInterceptorLast(
+                    HttpResponseInterceptor { response, entity, context ->
+                        println("HTTP RESPONSE: ${response.code} ${response.reasonPhrase}")
+                        response.headers.forEach { header ->
+                            println("HEADER: ${header.name}: ${header.value}")
+                        }
+                    },
+                )
+                .build()
 
         val factory = HttpComponentsClientHttpRequestFactory(client)
         return RestTemplate(factory)

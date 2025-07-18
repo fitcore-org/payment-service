@@ -1,48 +1,41 @@
 package com.fitcore.payment.presentation.controller
 
 import com.fitcore.payment.application.RoleService
-import com.fitcore.payment.domain.model.Role
-import com.fitcore.payment.domain.model.RoleType
+import com.fitcore.payment.presentation.dto.RoleDto
+import com.fitcore.payment.presentation.mapper.toDomain
+import com.fitcore.payment.presentation.mapper.toDto
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.util.UUID
+import java.util.*
 
 @RestController
 @RequestMapping("/roles")
 class RoleController(private val roleService: RoleService) {
-
     @PostMapping
-    fun createRole(@RequestBody body: Role): ResponseEntity<Role> {
-        val created = roleService.createRole(
-            id = body.id,
-            name = body.name,
-            email = body.email,
-            phone = body.phone,
-            document = body.document,
-            roleType = body.roleType
-        )
-        return ResponseEntity.ok(created)
-    }
+    fun createRole(
+        @RequestBody body: RoleDto,
+    ) = ResponseEntity.ok(roleService.createRole(body.toDomain()).toDto())
 
     @GetMapping("/{id}")
-    fun getRole(@PathVariable id: UUID): ResponseEntity<Role> {
-        val role = roleService.getRoleById(id)
-        return if (role != null) ResponseEntity.ok(role) else ResponseEntity.notFound().build()
-    }
+    fun getRole(
+        @PathVariable id: UUID,
+    ) = roleService.getRoleById(id)?.let { ResponseEntity.ok(it.toDto()) }
+        ?: ResponseEntity.notFound().build()
 
     @GetMapping
-    fun getAllRoles(): ResponseEntity<List<Role>> {
-        return ResponseEntity.ok(roleService.getAllRoles())
-    }
+    fun getAllRoles() = ResponseEntity.ok(roleService.getAllRoles().map { it.toDto() })
 
     @PutMapping("/{id}")
-    fun updateRole(@PathVariable id: UUID, @RequestBody body: Role): ResponseEntity<Role> {
-        val updated = roleService.updateRole(id, body)
-        return if (updated != null) ResponseEntity.ok(updated) else ResponseEntity.notFound().build()
-    }
+    fun updateRole(
+        @PathVariable id: UUID,
+        @RequestBody body: RoleDto,
+    ) = roleService.updateRole(id, body.toDomain())?.let { ResponseEntity.ok(it.toDto()) }
+        ?: ResponseEntity.notFound().build()
 
     @DeleteMapping("/{id}")
-    fun deleteRole(@PathVariable id: UUID): ResponseEntity<Void> {
+    fun deleteRole(
+        @PathVariable id: UUID,
+    ): ResponseEntity<Void> {
         roleService.deleteRole(id)
         return ResponseEntity.noContent().build()
     }
