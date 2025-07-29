@@ -1,4 +1,5 @@
 package com.fitcore.payment.infrastructure.payment
+
 import com.fitcore.payment.domain.repository.CardGatewayPort
 import com.fitcore.payment.presentation.dto.CardRequestDto
 import com.fitcore.payment.presentation.dto.CardResponseDto
@@ -28,20 +29,42 @@ class PagarmeCardGatewayAdapter(
         dto: CardRequestDto,
     ): CardResponseDto {
         val url = "$baseUrl/customers/$customerPagarmeId/cards"
-        val body =
-            mutableMapOf<String, Any?>(
-                "number" to dto.number,
-                "holder_name" to dto.holderName,
-                "exp_month" to dto.expMonth,
-                "exp_year" to dto.expYear,
-                "cvv" to dto.cvv,
-            )
+
+        // 1. Buscar os endereços do customer
+        val addressesUrl = "$baseUrl/customers/$customerPagarmeId/addresses"
+        println("Buscando endereços do customer: $addressesUrl")
+        val addressesResponse = restTemplate.exchange(
+            addressesUrl,
+            HttpMethod.GET,
+            HttpEntity(null, buildHeaders()),
+            Map::class.java
+        )
+        val addressesBody = addressesResponse.body as Map<String, Any?>
+        val addressData = addressesBody["data"] as? List<Map<String, Any?>> ?: emptyList()
+        println("Endereços encontrados: $addressData")
+        val billingAddressId = addressData.firstOrNull()?.get("id")?.toString()
+        println("Billing Address ID encontrado: $billingAddressId")
+        if (billingAddressId == null) throw RuntimeException("No billing address found for customer")
+
+        // 2. Montar o body com billing_address_id
+        val body = mutableMapOf<String, Any?>(
+            "number" to dto.number,
+            "holder_name" to dto.holderName,
+            "exp_month" to dto.expMonth,
+            "exp_year" to dto.expYear,
+            "cvv" to dto.cvv,
+            "billing_address_id" to billingAddressId
+        )
         dto.label?.let { body["label"] = it }
         dto.holderDocument?.let { body["holder_document"] = it }
         dto.brand?.let { body["brand"] = it }
 
+        println("Body de criação do cartão: $body")
+
         val response = restTemplate.postForEntity(url, HttpEntity(body, buildHeaders()), Map::class.java)
         val resp = response.body as Map<String, Any?>
+
+        println("Resposta da criação do cartão: $resp")
 
         return CardResponseDto(
             id = resp["id"].toString(),
@@ -54,6 +77,8 @@ class PagarmeCardGatewayAdapter(
             createdAt = resp["created_at"]?.toString(),
         )
     }
+
+    // Os outros métodos permanecem iguais (sem necessidade de log especial)
 
     override fun listCards(customerPagarmeId: String): List<CardResponseDto> {
         val url = "$baseUrl/customers/$customerPagarmeId/cards"

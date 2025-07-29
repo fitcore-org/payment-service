@@ -18,7 +18,7 @@ class CustomerService(
     fun createCustomer(dto: CustomerDto): CustomerDto {
         val entity = dto.toEntity()
         val saved = roleRepository.save(entity)
-        val serviceId = pagarmeApi.createCustomer(saved)
+        val serviceId = pagarmeApi.createCustomer(saved)    
         saved.serviceId = serviceId
         roleRepository.save(saved)
         return saved.toDto()

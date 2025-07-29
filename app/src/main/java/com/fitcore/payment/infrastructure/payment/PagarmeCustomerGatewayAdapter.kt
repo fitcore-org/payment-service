@@ -37,11 +37,25 @@ class PagarmeCustomerGatewayAdapter(
             )
         }
     }
-    
+
+    private fun buildPhones(phone: String?): Map<String, Any>? {
+        if (phone.isNullOrBlank() || phone.length < 3) return null
+        // Espera: DDD + número, ex: 81999998888
+        val areaCode = phone.substring(0, 2)
+        val number = phone.substring(2)
+        return mapOf(
+            "mobile_phone" to mapOf(
+                "country_code" to "55",
+                "area_code" to areaCode,
+                "number" to number
+            )
+        )
+    }
 
     override fun createCustomer(role: RoleEntity): String {
         val url = "$baseUrl/customers"
         val addresses = buildAddresses(role)
+        val phones = buildPhones(role.phone)
 
         val body = mutableMapOf<String, Any?>(
             "name" to role.name,
@@ -50,7 +64,7 @@ class PagarmeCustomerGatewayAdapter(
             "document_type" to role.documentType,
             "type" to (role.type ?: "individual"),
             "gender" to role.gender,
-            "phone_numbers" to listOfNotNull(role.phone),
+            "phones" to phones,
             "birthdate" to role.birthdate,
         ).apply {
             if (addresses != null) put("addresses", addresses)
@@ -67,6 +81,7 @@ class PagarmeCustomerGatewayAdapter(
     ) {
         val url = "$baseUrl/customers/$serviceId"
         val addresses = buildAddresses(role)
+        val phones = buildPhones(role.phone)
 
         val body = mutableMapOf<String, Any?>(
             "name" to role.name,
@@ -75,7 +90,7 @@ class PagarmeCustomerGatewayAdapter(
             "document_type" to role.documentType,
             "type" to (role.type ?: "individual"),
             "gender" to role.gender,
-            "phone_numbers" to listOfNotNull(role.phone),
+            "phones" to phones,
             "birthdate" to role.birthdate,
         ).apply {
             if (addresses != null) put("addresses", addresses)

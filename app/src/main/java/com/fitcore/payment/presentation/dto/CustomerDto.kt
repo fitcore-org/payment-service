@@ -15,5 +15,5 @@ data class CustomerDto(
     val gender: String?,
     val roleType: RoleType,
     val address: AddressDto?,
-    val serviceId: String? = null, // ID do Pagar.me
+    val serviceId: String? = null,
 )

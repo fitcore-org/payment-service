@@ -56,51 +56,54 @@ class PagarmeSubscriptionGatewayAdapter(
         val url = "$baseUrl/subscriptions"
         val headers = buildHeaders()
 
-    
-        val role = roleRepository.findByServiceId(subscription.customerId)
-            ?: throw IllegalArgumentException("Cliente não encontrado")
+        // 1. Buscar valor do plano (via Pagar.me)
+        val planUrl = "$baseUrl/plans/${subscription.planId}"
+        println("GET do plano: $planUrl")
+        val planResp = restTemplate.exchange(planUrl, HttpMethod.GET, HttpEntity(null, headers), Map::class.java)
+        println("Resposta do plano: ${planResp.body}")
+        val planMap = planResp.body as? Map<String, Any?>
+            ?: throw IllegalStateException("Resposta do plano não é um Map: ${planResp.body}")
 
-    
-        val customer = mutableMapOf<String, Any?>(
-            "name" to role.name,
-            "type" to (role.type ?: "individual"),
-            "email" to role.email,
-            "document" to role.document,
-            "document_type" to (role.documentType ?: "CPF"),
-            "gender" to role.gender,
-            "address" to buildAddress(role),
-            "phones" to buildPhones(role),
-            "birthdate" to role.birthdate,
-            "code" to role.id.toString()
-        ).filterValues { it != null }
+        // Busca o valor correto do pricing_scheme do primeiro item
+        val items = planMap["items"] as? List<*>
+            ?: throw IllegalStateException("Campo 'items' não encontrado ou inválido na resposta do plano: $planMap")
+        val firstItem = items.firstOrNull() as? Map<*, *>
+            ?: throw IllegalStateException("Plano sem items: $planMap")
+        val pricingScheme = firstItem["pricing_scheme"] as? Map<*, *>
+            ?: throw IllegalStateException("Item do plano sem 'pricing_scheme': $firstItem")
+        val planAmount = (pricingScheme["price"] as? Number)?.toInt()
+            ?: throw IllegalStateException("Campo 'price' não encontrado no 'pricing_scheme': $pricingScheme")
 
-        // Monta objeto cartão
-        val card = when {
-            !subscription.cardId.isNullOrBlank() -> mapOf("card_id" to subscription.cardId)
-            !subscription.cardToken.isNullOrBlank() -> mapOf("card_token" to subscription.cardToken)
-            else -> null
-        }
-
-        // Corpo da requisição para assinatura
+        // 2. Montar o body normalmente
         val body = mutableMapOf<String, Any?>(
             "plan_id" to subscription.planId,
             "payment_method" to subscription.paymentMethod,
             "installments" to subscription.installments,
             "code" to subscription.code,
             "metadata" to subscription.metadata,
-            "customer" to customer,
-            "card" to card,
-        ).filterValues { it != null }
+            "customer_id" to subscription.customerId,
+            "billing" to mapOf(
+                "value" to planAmount
+            )
+        )
 
-        // Envia para o Pagar.me
+        if (!subscription.cardId.isNullOrBlank()) {
+            body["card_id"] = subscription.cardId
+        }
+        if (!subscription.cardToken.isNullOrBlank()) {
+            body["card_token"] = subscription.cardToken
+        }
+        println("Criando subscription com body: $body")
+
         val response = restTemplate.postForEntity(url, HttpEntity(body, headers), Map::class.java)
+        println("Resposta da criação de subscription: ${response.body}")
         val resp = response.body as Map<String, Any?>
 
         return Subscription(
             id = resp["id"]?.toString(),
             code = resp["code"]?.toString(),
             planId = resp["plan_id"]?.toString() ?: subscription.planId,
-            customerId = role.id.toString(),
+            customerId = subscription.customerId,
             paymentMethod = resp["payment_method"]?.toString() ?: subscription.paymentMethod,
             status = resp["status"]?.toString(),
             startAt = null,
@@ -110,6 +113,10 @@ class PagarmeSubscriptionGatewayAdapter(
             cardToken = subscription.cardToken,
         )
     }
+
+
+
+
 
     override fun getSubscription(id: String): Subscription {
         val url = "$baseUrl/subscriptions/$id"
