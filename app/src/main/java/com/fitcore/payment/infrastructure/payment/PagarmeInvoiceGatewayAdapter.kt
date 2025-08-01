@@ -9,13 +9,22 @@ import org.springframework.web.client.RestTemplate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+/**
+ * Adapter for integrating with Pagar.me's Invoice API endpoints.
+ * Handles invoice creation, retrieval, listing and cancellation via HTTP requests.
+ */
 @Component
 class PagarmeInvoiceGatewayAdapter(
     @Value("\${pagarme.api-key}") private val apiKey: String,
     @Value("\${pagarme.base-url}") private val baseUrl: String,
 ) : InvoiceGatewayPort {
+
     private val restTemplate = RestTemplate()
 
+    /**
+     * Builds HTTP headers for Pagar.me API requests, including Basic Auth.
+     * @return Configured HttpHeaders with JSON content type and authentication.
+     */
     private fun buildHeaders(): HttpHeaders {
         val basicAuth = java.util.Base64.getEncoder().encodeToString("$apiKey:".toByteArray())
         return HttpHeaders().apply {
@@ -25,6 +34,13 @@ class PagarmeInvoiceGatewayAdapter(
         }
     }
 
+    /**
+     * Creates an invoice for a specific subscription cycle.
+     * @param subscriptionId The Pagar.me subscription ID.
+     * @param cycleId The cycle number or ID.
+     * @param metadata Optional metadata to include in the invoice.
+     * @return The created Invoice entity.
+     */
     override fun createInvoice(
         subscriptionId: String,
         cycleId: String,
@@ -41,6 +57,11 @@ class PagarmeInvoiceGatewayAdapter(
         return mapToInvoice(resp)
     }
 
+    /**
+     * Retrieves an invoice by its unique identifier.
+     * @param invoiceId The invoice ID.
+     * @return The Invoice entity.
+     */
     override fun getInvoice(invoiceId: String): Invoice {
         val url = "$baseUrl/invoices/$invoiceId"
         val headers = buildHeaders()
@@ -51,6 +72,20 @@ class PagarmeInvoiceGatewayAdapter(
         return mapToInvoice(resp)
     }
 
+    /**
+     * Lists invoices with optional filters and pagination.
+     * All filters are optional.
+     * @param status Invoice status to filter by.
+     * @param customerId Filter by customer ID.
+     * @param subscriptionId Filter by subscription ID.
+     * @param dueSince Only invoices due since this date (ISO format).
+     * @param dueUntil Only invoices due until this date (ISO format).
+     * @param createdSince Only invoices created since this date (ISO format).
+     * @param createdUntil Only invoices created until this date (ISO format).
+     * @param page Page number for pagination (default: 1).
+     * @param size Page size for pagination (default: 10).
+     * @return List of Invoice entities matching the filters.
+     */
     override fun listInvoices(
         status: String?,
         customerId: String?,
@@ -84,23 +119,36 @@ class PagarmeInvoiceGatewayAdapter(
         return data.map { mapToInvoice(it) }
     }
 
+    /**
+     * Cancels an invoice by its unique identifier.
+     * @param invoiceId The invoice ID to cancel.
+     */
     override fun cancelInvoice(invoiceId: String) {
         val url = "$baseUrl/invoices/$invoiceId"
         val headers = buildHeaders()
         restTemplate.exchange(url, HttpMethod.DELETE, HttpEntity(null, headers), Map::class.java)
     }
 
+    /**
+     * Helper to parse ISO datetime strings to LocalDateTime (handles optional "Z" suffix).
+     * @param str The ISO date string.
+     * @return LocalDateTime or null if parsing fails or input is null.
+     */
     private fun parseDateTime(str: Any?): LocalDateTime? =
         (str as? String)?.let {
-            // Lida com "Z" (UTC) e campos nulos
             try {
-                // Remove o Z se tiver e converte para LocalDateTime em UTC
                 LocalDateTime.parse(it.removeSuffix("Z"), DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             } catch (e: Exception) {
                 null
             }
         }
 
+    /**
+     * Maps a generic response map to the Invoice domain model.
+     * Extracts boletoPdfUrl from nested charge.last_transaction.pdf if present.
+     * @param map The response map from Pagar.me.
+     * @return Invoice domain model.
+     */
     private fun mapToInvoice(map: Map<String, Any?>): Invoice {
         val charge = map["charge"] as? Map<*, *>
         val lastTransaction = charge?.get("last_transaction") as? Map<*, *>

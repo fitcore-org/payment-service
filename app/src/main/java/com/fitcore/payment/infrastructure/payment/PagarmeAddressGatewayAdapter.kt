@@ -7,13 +7,22 @@ import org.springframework.http.*
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
 
+/**
+ * Adapter for integrating with Pagar.me's Address API endpoints.
+ * Handles all address-related operations for a customer via HTTP requests.
+ */
 @Component
 class PagarmeAddressGatewayAdapter(
     @Value("\${pagarme.api-key}") private val apiKey: String,
     @Value("\${pagarme.base-url}") private val baseUrl: String,
 ) : AddressGatewayPort {
+
     private val restTemplate = RestTemplate()
 
+    /**
+     * Builds the HTTP headers for Pagar.me API requests, including authentication.
+     * @return Configured HttpHeaders with JSON content type and Basic Auth.
+     */
     private fun buildHeaders(): HttpHeaders {
         val basicAuth = java.util.Base64.getEncoder().encodeToString("$apiKey:".toByteArray())
         return HttpHeaders().apply {
@@ -23,6 +32,12 @@ class PagarmeAddressGatewayAdapter(
         }
     }
 
+    /**
+     * Creates a new address for the specified customer.
+     * @param customerId The Pagar.me customer ID.
+     * @param address The address data to create.
+     * @return The created Address entity.
+     */
     override fun createAddress(customerId: String, address: Address): Address {
         val url = "$baseUrl/customers/$customerId/addresses"
         val body = mutableMapOf<String, Any?>(
@@ -48,6 +63,12 @@ class PagarmeAddressGatewayAdapter(
         )
     }
 
+    /**
+     * Retrieves an address for a given customer by its ID.
+     * @param customerId The Pagar.me customer ID.
+     * @param addressId The address ID.
+     * @return The requested Address entity.
+     */
     override fun getAddress(customerId: String, addressId: String): Address {
         val url = "$baseUrl/customers/$customerId/addresses/$addressId"
         val response = restTemplate.exchange(url, HttpMethod.GET, HttpEntity(null, buildHeaders()), Map::class.java)
@@ -64,6 +85,14 @@ class PagarmeAddressGatewayAdapter(
         )
     }
 
+    /**
+     * Updates an existing address for a given customer.
+     * Only line_2 (complement) can be updated on Pagar.me.
+     * @param customerId The Pagar.me customer ID.
+     * @param addressId The address ID to update.
+     * @param address The new address data (only line2 is considered).
+     * @return The updated Address entity.
+     */
     override fun updateAddress(customerId: String, addressId: String, address: Address): Address {
         val url = "$baseUrl/customers/$customerId/addresses/$addressId"
         val body = mutableMapOf<String, Any?>(
@@ -84,6 +113,11 @@ class PagarmeAddressGatewayAdapter(
         )
     }
 
+    /**
+     * Lists all addresses associated with the specified customer.
+     * @param customerId The Pagar.me customer ID.
+     * @return List of Address entities.
+     */
     override fun listAddresses(customerId: String): List<Address> {
         val url = "$baseUrl/customers/$customerId/addresses"
         val response = restTemplate.exchange(url, HttpMethod.GET, HttpEntity(null, buildHeaders()), Map::class.java)
@@ -103,6 +137,11 @@ class PagarmeAddressGatewayAdapter(
         }
     }
 
+    /**
+     * Deletes an address for the given customer by its ID.
+     * @param customerId The Pagar.me customer ID.
+     * @param addressId The address ID to delete.
+     */
     override fun deleteAddress(customerId: String, addressId: String) {
         val url = "$baseUrl/customers/$customerId/addresses/$addressId"
         restTemplate.exchange(url, HttpMethod.DELETE, HttpEntity(null, buildHeaders()), Void::class.java)

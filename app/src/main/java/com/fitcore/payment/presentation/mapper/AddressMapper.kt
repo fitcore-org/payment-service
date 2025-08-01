@@ -6,6 +6,9 @@ import com.fitcore.payment.presentation.dto.AddressDto
 import com.fitcore.payment.presentation.dto.AddressRequestDto
 import com.fitcore.payment.presentation.dto.AddressResponseDto
 
+/**
+ * Converts AddressEmbeddable (JPA) to Address (domain model).
+ */
 fun AddressEmbeddable.toDomain(): Address =
     Address(
         line1 = this.line1,
@@ -16,6 +19,9 @@ fun AddressEmbeddable.toDomain(): Address =
         country = this.country,
     )
 
+/**
+ * Converts Address (domain model) to AddressEmbeddable (JPA).
+ */
 fun Address.toEmbeddable(): AddressEmbeddable =
     AddressEmbeddable(
         line1 = this.line1,
@@ -26,6 +32,9 @@ fun Address.toEmbeddable(): AddressEmbeddable =
         country = this.country,
     )
 
+/**
+ * Converts AddressDto (transport layer) to Address (domain model).
+ */
 fun AddressDto.toDomain(): Address =
     Address(
         line1 = this.line1,
@@ -36,6 +45,9 @@ fun AddressDto.toDomain(): Address =
         country = this.country,
     )
 
+/**
+ * Converts Address (domain model) to AddressDto (transport layer).
+ */
 fun Address.toDto(): AddressDto =
     AddressDto(
         line1 = this.line1,
@@ -46,8 +58,9 @@ fun Address.toDto(): AddressDto =
         country = this.country,
     )
 
-// NOVOS MAPPERS PARA REQUEST/RESPONSE DTO
-
+/**
+ * Converts AddressRequestDto (API input) to Address (domain model), including optional metadata.
+ */
 fun AddressRequestDto.toDomain(): Address =
     Address(
         line1 = this.line1,
@@ -59,6 +72,9 @@ fun AddressRequestDto.toDomain(): Address =
         metadata = this.metadata
     )
 
+/**
+ * Converts Address (domain model) to AddressResponseDto (API output), supporting id and optional customerId.
+ */
 fun Address.toResponseDto(id: String, customerId: String? = null): AddressResponseDto =
     AddressResponseDto(
         id = id,

@@ -4,7 +4,14 @@ import com.fitcore.payment.domain.model.Invoice
 import com.fitcore.payment.presentation.dto.CreateInvoiceRequestDto
 import com.fitcore.payment.presentation.dto.InvoiceResponseDto
 
+/**
+ * Mapper object for converting between Invoice domain model and DTOs.
+ */
 object InvoiceMapper {
+    /**
+     * Maps CreateInvoiceRequestDto (input DTO) to Invoice (domain model).
+     * Only fills metadata (other fields will be set during creation).
+     */
     fun toDomain(dto: CreateInvoiceRequestDto): Invoice =
         Invoice(
             id = "",
@@ -21,6 +28,9 @@ object InvoiceMapper {
             metadata = dto.metadata,
         )
 
+    /**
+     * Maps Invoice (domain model) to InvoiceResponseDto (output DTO).
+     */
     fun toResponse(model: Invoice): InvoiceResponseDto =
         InvoiceResponseDto(
             id = model.id,

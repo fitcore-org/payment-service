@@ -30,6 +30,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.apache.httpcomponents.client5:httpclient5:5.2.1")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0")
 
     implementation("software.amazon.awssdk:s3:2.25.65")
     implementation("software.amazon.awssdk:auth:2.25.65")

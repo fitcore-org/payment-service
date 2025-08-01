@@ -7,13 +7,22 @@ import org.springframework.http.*
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
 
+/**
+ * Adapter for integrating with Pagar.me's Customer API endpoints.
+ * Handles customer creation, update and deletion via HTTP requests.
+ */
 @Component
 class PagarmeCustomerGatewayAdapter(
     @Value("\${pagarme.api-key}") private val apiKey: String,
     @Value("\${pagarme.base-url}") private val baseUrl: String,
 ) : CustomerGatewayPort {
+
     private val restTemplate = RestTemplate()
 
+    /**
+     * Builds HTTP headers for Pagar.me API requests, including Basic Auth.
+     * @return Configured HttpHeaders with JSON content type and authentication.
+     */
     private fun buildHeaders(): HttpHeaders {
         val basicAuth = java.util.Base64.getEncoder().encodeToString("$apiKey:".toByteArray())
         return HttpHeaders().apply {
@@ -23,6 +32,11 @@ class PagarmeCustomerGatewayAdapter(
         }
     }
 
+    /**
+     * Builds the addresses payload for the customer creation/update request.
+     * @param role The RoleEntity containing the address information.
+     * @return List of address maps or null if no address is set.
+     */
     private fun buildAddresses(role: RoleEntity): List<Map<String, Any?>>? {
         return role.address?.let {
             listOf(
@@ -38,9 +52,14 @@ class PagarmeCustomerGatewayAdapter(
         }
     }
 
+    /**
+     * Builds the phones payload for the customer creation/update request.
+     * Expects phone in the format DDD + number (e.g. 81999998888).
+     * @param phone The phone string.
+     * @return Map with phone structure or null if phone is invalid/blank.
+     */
     private fun buildPhones(phone: String?): Map<String, Any>? {
         if (phone.isNullOrBlank() || phone.length < 3) return null
-        // Espera: DDD + número, ex: 81999998888
         val areaCode = phone.substring(0, 2)
         val number = phone.substring(2)
         return mapOf(
@@ -52,6 +71,12 @@ class PagarmeCustomerGatewayAdapter(
         )
     }
 
+    /**
+     * Creates a customer on Pagar.me using data from RoleEntity.
+     * @param role The role/entity containing customer data.
+     * @return The ID of the newly created customer on Pagar.me.
+     * @throws RuntimeException if Pagar.me response does not contain an ID.
+     */
     override fun createCustomer(role: RoleEntity): String {
         val url = "$baseUrl/customers"
         val addresses = buildAddresses(role)
@@ -75,6 +100,11 @@ class PagarmeCustomerGatewayAdapter(
         return resp["id"]?.toString() ?: throw RuntimeException("Missing id from Pagar.me")
     }
 
+    /**
+     * Updates an existing customer on Pagar.me with data from RoleEntity.
+     * @param serviceId The ID of the customer to update.
+     * @param role The role/entity with updated customer data.
+     */
     override fun updateCustomer(
         serviceId: String,
         role: RoleEntity,
@@ -99,6 +129,10 @@ class PagarmeCustomerGatewayAdapter(
         restTemplate.exchange(url, HttpMethod.PUT, HttpEntity(body, buildHeaders()), Map::class.java)
     }
 
+    /**
+     * Deletes a customer from Pagar.me by its ID.
+     * @param serviceId The ID of the customer to delete.
+     */
     override fun deleteCustomer(serviceId: String) {
         val url = "$baseUrl/customers/$serviceId"
         restTemplate.exchange(url, HttpMethod.DELETE, HttpEntity(null, buildHeaders()), Void::class.java)

@@ -5,6 +5,9 @@ import com.fitcore.payment.infrastructure.persistence.entity.RoleEntity
 import com.fitcore.payment.presentation.dto.RoleDto
 import java.util.*
 
+/**
+ * Maps RoleEntity (persistence) to Role (domain model).
+ */
 fun RoleEntity.toDomain(): Role =
     Role(
         id = this.id,
@@ -21,6 +24,9 @@ fun RoleEntity.toDomain(): Role =
         serviceId = this.serviceId,
     )
 
+/**
+ * Maps Role (domain model) to RoleEntity (for persistence).
+ */
 fun Role.toEntity(): RoleEntity =
     RoleEntity(
         id = this.id,
@@ -37,6 +43,9 @@ fun Role.toEntity(): RoleEntity =
         serviceId = this.serviceId,
     )
 
+/**
+ * Maps RoleDto (API/transport layer) to Role (domain model).
+ */
 fun RoleDto.toDomain(): Role =
     Role(
         id = this.id ?: UUID.randomUUID(),
@@ -53,6 +62,9 @@ fun RoleDto.toDomain(): Role =
         serviceId = this.serviceId,
     )
 
+/**
+ * Maps Role (domain model) to RoleDto (API/transport layer).
+ */
 fun Role.toDto(): RoleDto =
     RoleDto(
         id = this.id,
