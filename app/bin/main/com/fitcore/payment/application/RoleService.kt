@@ -10,21 +10,19 @@ import org.springframework.stereotype.Service
 import java.util.*
 
 /**
- * Service responsible for creating, updating and deleting roles.  It
- * orchestrates persisting role entities locally as well as propagating
- * changes to Pagar.me.  This implementation has been adjusted so that
- * updates will always synchronise with Pagar.me: if a role does not yet
- * have a serviceId associated (i.e. Pagar.me customer ID), a new
- * customer will be created upon update and the returned identifier
- * stored.  This prevents situations where calling PUT on /roles fails to
- * update the external customer or where POST requests inadvertently
- * update a record without synchronising with Pagar.me.
+ * Application service for managing roles (users, admins, customers, etc).
+ * Handles local persistence and synchronization with external payment providers.
  */
 @Service
 class RoleService(
     private val roleRepository: RoleRepository,
     private val pagarmeApi: CustomerGatewayPort,
 ) {
+    /**
+     * Creates a new role, saves it locally and on the external provider.
+     * @param role The role data to create.
+     * @return The created Role.
+     */
     fun createRole(role: Role): Role {
         val entity = role.toEntity()
         val saved = roleRepository.save(entity)
@@ -34,10 +32,27 @@ class RoleService(
         return saved.toDomain()
     }
 
-    fun getRoleById(id: UUID): Role? = roleRepository.findById(id).map { it.toDomain() }.orElse(null)
+    /**
+     * Retrieves a role by its UUID.
+     * @param id The role identifier (UUID).
+     * @return The Role if found, otherwise null.
+     */
+    fun getRoleById(id: UUID): Role? =
+        roleRepository.findById(id).map { it.toDomain() }.orElse(null)
 
-    fun getAllRoles(): List<Role> = roleRepository.findAll().map { it.toDomain() }
+    /**
+     * Lists all registered roles.
+     * @return List of Role entities.
+     */
+    fun getAllRoles(): List<Role> =
+        roleRepository.findAll().map { it.toDomain() }
 
+    /**
+     * Updates a role both locally and in the external provider.
+     * @param id The role identifier (UUID).
+     * @param updated The updated role data.
+     * @return The updated Role, or null if not found.
+     */
     fun updateRole(id: UUID, updated: Role): Role? {
         val existing = roleRepository.findById(id)
         if (existing.isPresent) {
@@ -53,20 +68,18 @@ class RoleService(
             entity.type = updated.type
             entity.gender = updated.gender
             roleRepository.save(entity)
-
-            val currentServiceId = entity.serviceId
-            if (currentServiceId.isNullOrBlank()) {
-                val newServiceId = pagarmeApi.createCustomer(entity)
-                entity.serviceId = newServiceId
-                roleRepository.save(entity)
-            } else {
-                pagarmeApi.updateCustomer(currentServiceId, entity)
+            if (!entity.serviceId.isNullOrBlank()) {
+                pagarmeApi.updateCustomer(entity.serviceId!!, entity)
             }
             return entity.toDomain()
         }
         return null
     }
 
+    /**
+     * Deletes a role both locally and from the external provider.
+     * @param id The role identifier (UUID).
+     */
     fun deleteRole(id: UUID) {
         val entity = roleRepository.findById(id)
         if (entity.isPresent) {

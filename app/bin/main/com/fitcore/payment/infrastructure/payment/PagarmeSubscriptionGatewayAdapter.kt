@@ -8,18 +8,13 @@ import com.fitcore.payment.domain.repository.SubscriptionGatewayPort
 import com.fitcore.payment.infrastructure.persistence.entity.RoleEntity
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.*
-import com.fasterxml.jackson.databind.JsonNode
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
 import java.util.*
 
 /**
- * Adapter that translates calls from our domain layer into REST API calls
- * against Pagar.me.  It has been updated to enrich subscription data
- * returned from Pagar.me with the plan’s name and value and to populate
- * the customerId directly from the subscription’s customer object.  For
- * listing subscriptions it additionally fetches plan details so that the
- * returned list includes human friendly information.
+ * Adapter for integrating with Pagar.me's Subscription API endpoints.
+ * Handles subscription and subscription item operations via HTTP requests.
  */
 @Component
 class PagarmeSubscriptionGatewayAdapter(
@@ -27,10 +22,15 @@ class PagarmeSubscriptionGatewayAdapter(
     @Value("\${pagarme.base-url}") private val baseUrl: String,
     private val roleRepository: RoleRepository,
 ) : SubscriptionGatewayPort {
+
     private val restTemplate = RestTemplate()
 
+    /**
+     * Builds HTTP headers for Pagar.me API requests, including Basic Auth.
+     * @return Configured HttpHeaders with JSON content type and authentication.
+     */
     private fun buildHeaders(): HttpHeaders {
-        val basicAuth = Base64.getEncoder().encodeToString("$apiKey:".toByteArray())
+        val basicAuth = java.util.Base64.getEncoder().encodeToString("$apiKey:".toByteArray())
         return HttpHeaders().apply {
             contentType = MediaType.APPLICATION_JSON
             set("Authorization", "Basic $basicAuth")
@@ -38,6 +38,11 @@ class PagarmeSubscriptionGatewayAdapter(
         }
     }
 
+    /**
+     * Builds an address payload from a RoleEntity.
+     * @param role The RoleEntity containing the address information.
+     * @return A map representing the address or null if not present.
+     */
     private fun buildAddress(role: RoleEntity): Map<String, Any?>? {
         val address = role.address ?: return null
         return mapOf(
@@ -46,39 +51,53 @@ class PagarmeSubscriptionGatewayAdapter(
             "zip_code" to address.zipCode,
             "city" to address.city,
             "state" to address.state,
-            "country" to address.country,
+            "country" to address.country
         )
     }
 
+    /**
+     * Builds the phones payload from a RoleEntity.
+     * @param role The RoleEntity containing the phone number.
+     * @return A map representing the phone or null if not present.
+     */
     private fun buildPhones(role: RoleEntity): Map<String, Any?>? {
         val phone = role.phone ?: return null
         return mapOf(
             "mobile_phone" to mapOf(
                 "country_code" to "55",
                 "area_code" to phone.substring(0, 2),
-                "number" to phone.substring(2),
-            ),
+                "number" to phone.substring(2)
+            )
         )
     }
 
+    /**
+     * Creates a new subscription.
+     * Fetches the plan value from Pagar.me and uses it for billing.
+     * @param subscription The Subscription domain model.
+     * @return The created Subscription.
+     * @throws IllegalStateException if plan or pricing data is invalid.
+     */
     override fun createSubscription(subscription: Subscription): Subscription {
         val url = "$baseUrl/subscriptions"
         val headers = buildHeaders()
 
-        // 1. Fetch plan details from Pagar.me
+        // Fetch the plan's pricing value
         val planUrl = "$baseUrl/plans/${subscription.planId}"
         val planResp = restTemplate.exchange(planUrl, HttpMethod.GET, HttpEntity(null, headers), Map::class.java)
-        val planMap = planResp.body as? Map<*, *> ?: throw IllegalStateException("Resposta do plano não é um Map: ${planResp.body}")
+        val planMap = planResp.body as? Map<String, Any?>
+            ?: throw IllegalStateException("Plan response is not a valid Map: ${planResp.body}")
 
-        // Extract the pricing scheme value and plan name from the plan
-        val planItems = planMap["items"] as? List<*> ?: throw IllegalStateException("Campo 'items' não encontrado ou inválido na resposta do plano: $planMap")
-        val firstItem = planItems.firstOrNull() as? Map<*, *> ?: throw IllegalStateException("Plano sem items: $planMap")
-        val pricingScheme = firstItem["pricing_scheme"] as? Map<*, *> ?: throw IllegalStateException("Item do plano sem 'pricing_scheme': $firstItem")
+        val items = planMap["items"] as? List<*>
+            ?: throw IllegalStateException("Field 'items' missing or invalid in plan response: $planMap")
+        val firstItem = items.firstOrNull() as? Map<*, *>
+            ?: throw IllegalStateException("Plan has no items: $planMap")
+        val pricingScheme = firstItem["pricing_scheme"] as? Map<*, *>
+            ?: throw IllegalStateException("Plan item missing 'pricing_scheme': $firstItem")
         val planAmount = (pricingScheme["price"] as? Number)?.toInt()
-            ?: throw IllegalStateException("Campo 'price' não encontrado no 'pricing_scheme': $pricingScheme")
-        val planName = planMap["name"]?.toString()
+            ?: throw IllegalStateException("Field 'price' not found in 'pricing_scheme': $pricingScheme")
 
-        // 2. Build subscription body
+        // Build the subscription body
         val body = mutableMapOf<String, Any?>(
             "plan_id" to subscription.planId,
             "payment_method" to subscription.paymentMethod,
@@ -87,9 +106,10 @@ class PagarmeSubscriptionGatewayAdapter(
             "metadata" to subscription.metadata,
             "customer_id" to subscription.customerId,
             "billing" to mapOf(
-                "value" to planAmount,
-            ),
+                "value" to planAmount
+            )
         )
+
         if (!subscription.cardId.isNullOrBlank()) {
             body["card_id"] = subscription.cardId
         }
@@ -98,14 +118,12 @@ class PagarmeSubscriptionGatewayAdapter(
         }
 
         val response = restTemplate.postForEntity(url, HttpEntity(body, headers), Map::class.java)
-        val resp = response.body as Map<*, *>
+        val resp = response.body as Map<String, Any?>
 
         return Subscription(
             id = resp["id"]?.toString(),
             code = resp["code"]?.toString(),
             planId = resp["plan_id"]?.toString() ?: subscription.planId,
-            planName = planName,
-            planValue = planAmount,
             customerId = subscription.customerId,
             paymentMethod = resp["payment_method"]?.toString() ?: subscription.paymentMethod,
             status = resp["status"]?.toString(),
@@ -117,37 +135,76 @@ class PagarmeSubscriptionGatewayAdapter(
         )
     }
 
-    override fun getSubscription(id: String): JsonNode {
+    /**
+     * Retrieves a subscription by its ID.
+     * @param id The subscription ID.
+     * @return The Subscription.
+     */
+    override fun getSubscription(id: String): Subscription {
         val url = "$baseUrl/subscriptions/$id"
         val headers = buildHeaders()
-        val response: ResponseEntity<JsonNode> = restTemplate.exchange(
-            url,
-            HttpMethod.GET,
-            HttpEntity(null, headers),
-            JsonNode::class.java
+        val response = restTemplate.exchange(url, HttpMethod.GET, HttpEntity(null, headers), Map::class.java)
+        val resp = response.body as Map<String, Any?>
+
+        return Subscription(
+            id = resp["id"]?.toString(),
+            code = resp["code"]?.toString(),
+            planId = resp["plan_id"]?.toString() ?: "",
+            customerId = "",
+            paymentMethod = resp["payment_method"]?.toString() ?: "",
+            status = resp["status"]?.toString(),
+            startAt = null,
+            installments = (resp["installments"] as? Number)?.toInt(),
+            metadata = resp["metadata"] as? Map<String, Any>,
         )
-        return response.body!!
     }
 
-    override fun listSubscriptions(): JsonNode {
+    /**
+     * Lists all subscriptions.
+     * @return List of all Subscription entities.
+     */
+    override fun listSubscriptions(): List<Subscription> {
         val url = "$baseUrl/subscriptions"
         val headers = buildHeaders()
-        val response: ResponseEntity<JsonNode> = restTemplate.exchange(
-            url,
-            HttpMethod.GET,
-            HttpEntity(null, headers),
-            JsonNode::class.java
-        )
-        return response.body!!
+        val response = restTemplate.exchange(url, HttpMethod.GET, HttpEntity(null, headers), Map::class.java)
+        val body = response.body as Map<String, Any>
+        val data = body["data"] as? List<Map<String, Any?>> ?: emptyList()
+
+        return data.map {
+            Subscription(
+                id = it["id"]?.toString(),
+                code = it["code"]?.toString(),
+                planId = it["plan_id"]?.toString() ?: "",
+                customerId = "",
+                paymentMethod = it["payment_method"]?.toString() ?: "",
+                status = it["status"]?.toString(),
+                startAt = null,
+                installments = (it["installments"] as? Number)?.toInt(),
+                metadata = it["metadata"] as? Map<String, Any>,
+            )
+        }
     }
 
+    /**
+     * Cancels a subscription by its ID.
+     * @param id The subscription ID.
+     */
     override fun cancelSubscription(id: String) {
         val url = "$baseUrl/subscriptions/$id"
         val headers = buildHeaders()
         restTemplate.exchange(url, HttpMethod.DELETE, HttpEntity(null, headers), Map::class.java)
     }
 
-    override fun addItemToSubscription(subscriptionId: String, item: SubscriptionItem): SubscriptionItem {
+    /**
+     * Adds an item to a subscription.
+     * @param subscriptionId The subscription ID.
+     * @param item The SubscriptionItem to add.
+     * @return The created SubscriptionItem.
+     */
+    override fun addItemToSubscription(
+        subscriptionId: String,
+        item: SubscriptionItem,
+    ): SubscriptionItem {
         val url = "$baseUrl/subscriptions/$subscriptionId/items"
         val headers = buildHeaders()
 
@@ -166,7 +223,7 @@ class PagarmeSubscriptionGatewayAdapter(
         ).filterValues { it != null }
 
         val response = restTemplate.postForEntity(url, HttpEntity(body, headers), Map::class.java)
-        val resp = response.body as Map<*, *>
+        val resp = response.body as Map<String, Any?>
 
         return SubscriptionItem(
             id = resp["id"]?.toString(),
@@ -185,14 +242,19 @@ class PagarmeSubscriptionGatewayAdapter(
         )
     }
 
+    /**
+     * Lists all items for a subscription.
+     * @param subscriptionId The subscription ID.
+     * @return List of SubscriptionItem entities.
+     */
     override fun listSubscriptionItems(subscriptionId: String): List<SubscriptionItem> {
         val url = "$baseUrl/subscriptions/$subscriptionId/items"
         val headers = buildHeaders()
         val response = restTemplate.exchange(url, HttpMethod.GET, HttpEntity(null, headers), Map::class.java)
-        val body = response.body as Map<*, *>
-        val data = body["data"] as? List<*> ?: emptyList<Any>()
-        return data.map { raw ->
-            val resp = raw as Map<*, *>
+        val body = response.body as Map<String, Any?>
+        val data = body["data"] as? List<Map<String, Any?>> ?: emptyList()
+
+        return data.map { resp ->
             SubscriptionItem(
                 id = resp["id"]?.toString(),
                 planItemId = resp["plan_item_id"]?.toString(),
@@ -211,7 +273,18 @@ class PagarmeSubscriptionGatewayAdapter(
         }
     }
 
-    override fun updateSubscriptionItem(subscriptionId: String, itemId: String, item: SubscriptionItem): SubscriptionItem {
+    /**
+     * Updates an item in a subscription.
+     * @param subscriptionId The subscription ID.
+     * @param itemId The item ID.
+     * @param item The SubscriptionItem with new data.
+     * @return The updated SubscriptionItem.
+     */
+    override fun updateSubscriptionItem(
+        subscriptionId: String,
+        itemId: String,
+        item: SubscriptionItem,
+    ): SubscriptionItem {
         val url = "$baseUrl/subscriptions/$subscriptionId/items/$itemId"
         val headers = buildHeaders()
 
@@ -230,7 +303,8 @@ class PagarmeSubscriptionGatewayAdapter(
         ).filterValues { it != null }
 
         val response = restTemplate.exchange(url, HttpMethod.PUT, HttpEntity(body, headers), Map::class.java)
-        val resp = response.body as Map<*, *>
+        val resp = response.body as Map<String, Any?>
+
         return SubscriptionItem(
             id = resp["id"]?.toString(),
             planItemId = resp["plan_item_id"]?.toString(),
@@ -248,7 +322,15 @@ class PagarmeSubscriptionGatewayAdapter(
         )
     }
 
-    override fun removeSubscriptionItem(subscriptionId: String, itemId: String) {
+    /**
+     * Removes an item from a subscription by its ID.
+     * @param subscriptionId The subscription ID.
+     * @param itemId The item ID to remove.
+     */
+    override fun removeSubscriptionItem(
+        subscriptionId: String,
+        itemId: String,
+    ) {
         val url = "$baseUrl/subscriptions/$subscriptionId/items/$itemId"
         val headers = buildHeaders()
         restTemplate.exchange(url, HttpMethod.DELETE, HttpEntity(null, headers), Map::class.java)
