@@ -12,18 +12,11 @@ import org.springframework.web.bind.annotation.*
  * All endpoints are documented and return responses in English.
  */
 @RestController
-@RequestMapping("/api/invoices")
+@RequestMapping("/payment/api/invoices")
 class InvoiceController(
     private val invoiceService: InvoiceService,
 ) {
 
-    /**
-     * Creates a new invoice for a specific subscription cycle.
-     * @param subscriptionId The ID of the subscription.
-     * @param cycleId The cycle number or ID for which the invoice will be created.
-     * @param dto Optional metadata or additional invoice details.
-     * @return The created invoice.
-     */
     @PostMapping("/subscriptions/{subscriptionId}/cycles/{cycleId}/pay")
     fun createInvoice(
         @PathVariable subscriptionId: String,
@@ -34,11 +27,6 @@ class InvoiceController(
         return ResponseEntity.ok(InvoiceMapper.toResponse(invoice))
     }
 
-    /**
-     * Retrieves an invoice by its unique identifier.
-     * @param invoiceId The ID of the invoice to retrieve.
-     * @return The invoice data.
-     */
     @GetMapping("/{invoiceId}")
     fun getInvoice(
         @PathVariable invoiceId: String,
@@ -47,20 +35,6 @@ class InvoiceController(
         return ResponseEntity.ok(InvoiceMapper.toResponse(invoice))
     }
 
-    /**
-     * Lists invoices with optional filters.
-     * All filters are optional and can be combined.
-     * @param status Invoice status to filter by.
-     * @param customerId Filter by customer ID.
-     * @param subscriptionId Filter by subscription ID.
-     * @param dueSince Only invoices due since this date (ISO format).
-     * @param dueUntil Only invoices due until this date (ISO format).
-     * @param createdSince Only invoices created since this date (ISO format).
-     * @param createdUntil Only invoices created until this date (ISO format).
-     * @param page The page number for pagination (default: 1).
-     * @param size The page size for pagination (default: 10).
-     * @return List of invoices matching the filters.
-     */
     @GetMapping
     fun listInvoices(
         @RequestParam(required = false) status: String?,
@@ -81,11 +55,6 @@ class InvoiceController(
         return ResponseEntity.ok(invoices.map { InvoiceMapper.toResponse(it) })
     }
 
-    /**
-     * Cancels an invoice by its unique identifier.
-     * @param invoiceId The ID of the invoice to cancel.
-     * @return No content if successfully cancelled.
-     */
     @DeleteMapping("/{invoiceId}")
     fun cancelInvoice(
         @PathVariable invoiceId: String,

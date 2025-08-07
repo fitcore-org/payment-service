@@ -11,16 +11,11 @@ import org.springframework.web.bind.annotation.*
  * All endpoints return messages and responses in English.
  */
 @RestController
-@RequestMapping("/api/plans")
+@RequestMapping("/payment/api/plans")
 class PlanController(
     private val planService: PlanService,
 ) {
 
-    /**
-     * Creates a new plan.
-     * @param dto Request body with plan details.
-     * @return The created plan.
-     */
     @PostMapping
     fun createPlan(
         @RequestBody dto: PlanRequestDto,
@@ -31,11 +26,6 @@ class PlanController(
             )
         )
 
-    /**
-     * Retrieves a plan by its ID.
-     * @param planId The ID of the plan.
-     * @return The requested plan.
-     */
     @GetMapping("/{planId}")
     fun getPlan(
         @PathVariable planId: String,
@@ -46,12 +36,6 @@ class PlanController(
             )
         )
 
-    /**
-     * Updates an existing plan.
-     * @param planId The ID of the plan to update.
-     * @param dto The new data for the plan.
-     * @return The updated plan.
-     */
     @PutMapping("/{planId}")
     fun updatePlan(
         @PathVariable planId: String,
@@ -63,11 +47,6 @@ class PlanController(
             )
         )
 
-    /**
-     * Deletes a plan by its ID.
-     * @param planId The ID of the plan to delete.
-     * @return No content if successful.
-     */
     @DeleteMapping("/{planId}")
     fun deletePlan(
         @PathVariable planId: String,
@@ -76,10 +55,6 @@ class PlanController(
             ResponseEntity.noContent().build()
         }
 
-    /**
-     * Lists all plans.
-     * @return The list of all plans.
-     */
     @GetMapping
     fun listPlans(): ResponseEntity<List<PlanResponseDto>> =
         ResponseEntity.ok(
@@ -88,12 +63,6 @@ class PlanController(
 
     // -------- PLAN ITEM ROUTES ----------
 
-    /**
-     * Adds a new item to a plan.
-     * @param planId The ID of the plan to add the item to.
-     * @param dto The item details.
-     * @return The created plan item.
-     */
     @PostMapping("/{planId}/items")
     fun addPlanItem(
         @PathVariable planId: String,
@@ -105,13 +74,6 @@ class PlanController(
             )
         )
 
-    /**
-     * Updates an existing item of a plan.
-     * @param planId The ID of the plan.
-     * @param itemId The ID of the item to update.
-     * @param dto The new data for the item.
-     * @return The updated plan item.
-     */
     @PutMapping("/{planId}/items/{itemId}")
     fun updatePlanItem(
         @PathVariable planId: String,
@@ -124,12 +86,6 @@ class PlanController(
             )
         )
 
-    /**
-     * Deletes an item from a plan.
-     * @param planId The ID of the plan.
-     * @param itemId The ID of the item to delete.
-     * @return No content if successful.
-     */
     @DeleteMapping("/{planId}/items/{itemId}")
     fun deletePlanItem(
         @PathVariable planId: String,

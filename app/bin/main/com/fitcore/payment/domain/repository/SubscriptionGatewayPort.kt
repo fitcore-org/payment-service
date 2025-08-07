@@ -2,6 +2,7 @@ package com.fitcore.payment.domain.repository
 
 import com.fitcore.payment.domain.model.Subscription
 import com.fitcore.payment.domain.model.SubscriptionItem
+import com.fasterxml.jackson.databind.JsonNode
 
 /**
  * Gateway port for subscription-related operations with external providers.
@@ -19,13 +20,13 @@ interface SubscriptionGatewayPort {
      * @param id The subscription identifier.
      * @return The found Subscription.
      */
-    fun getSubscription(id: String): Subscription
+    fun getSubscription(id: String): JsonNode
 
     /**
      * Lists all subscriptions.
      * @return List of all Subscription entities.
      */
-    fun listSubscriptions(): List<Subscription>
+    fun listSubscriptions(): JsonNode
 
     /**
      * Cancels a subscription by its identifier.

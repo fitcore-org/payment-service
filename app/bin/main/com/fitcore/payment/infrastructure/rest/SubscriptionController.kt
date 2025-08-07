@@ -1,10 +1,12 @@
 package com.fitcore.payment.presentation.rest
 
 import com.fitcore.payment.application.SubscriptionService
+import com.fitcore.payment.infrastructure.payment.PagarmeSubscriptionGatewayAdapter
 import com.fitcore.payment.presentation.dto.SubscriptionItemRequestDto
 import com.fitcore.payment.presentation.dto.SubscriptionItemResponseDto
 import com.fitcore.payment.presentation.dto.SubscriptionRequestDto
 import com.fitcore.payment.presentation.mapper.SubscriptionMapper
+import com.fasterxml.jackson.databind.JsonNode
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -13,16 +15,12 @@ import org.springframework.web.bind.annotation.*
  * All endpoints return messages and responses in English.
  */
 @RestController
-@RequestMapping("/api/subscriptions")
+@RequestMapping("/payment/api/subscriptions")
 class SubscriptionController(
     private val subscriptionService: SubscriptionService,
+    private val pagarmeSubscriptionGatewayAdapter: PagarmeSubscriptionGatewayAdapter, // <- adapter injetado
 ) {
 
-    /**
-     * Creates a new subscription.
-     * @param dto The data for the new subscription.
-     * @return The created subscription.
-     */
     @PostMapping
     fun createSubscription(
         @RequestBody dto: SubscriptionRequestDto,
@@ -33,37 +31,18 @@ class SubscriptionController(
             ),
         )
 
-    /**
-     * Retrieves a subscription by its unique identifier.
-     * @param id The subscription ID.
-     * @return The subscription if found.
-     */
     @GetMapping("/{id}")
-    fun getSubscription(
-        @PathVariable id: String,
-    ): ResponseEntity<*> =
-        ResponseEntity.ok(
-            SubscriptionMapper.toResponse(
-                subscriptionService.getSubscription(id),
-            ),
-        )
+    fun getSubscription(@PathVariable id: String): ResponseEntity<JsonNode> {
+        val result = pagarmeSubscriptionGatewayAdapter.getSubscription(id)
+        return ResponseEntity.ok(result)
+    }
 
-    /**
-     * Lists all subscriptions.
-     * @return The list of subscriptions.
-     */
     @GetMapping
-    fun listSubscriptions(): ResponseEntity<List<*>> =
-        ResponseEntity.ok(
-            subscriptionService.listSubscriptions()
-                .map { SubscriptionMapper.toResponse(it) },
-        )
+    fun listSubscriptions(): ResponseEntity<JsonNode> {
+        val result = pagarmeSubscriptionGatewayAdapter.listSubscriptions()
+        return ResponseEntity.ok(result)
+    }
 
-    /**
-     * Cancels a subscription by its ID.
-     * @param id The subscription ID to cancel.
-     * @return No content if successful.
-     */
     @DeleteMapping("/{id}")
     fun cancelSubscription(
         @PathVariable id: String,
@@ -74,12 +53,6 @@ class SubscriptionController(
 
     // -------- SUBSCRIPTION ITEM ROUTES ----------
 
-    /**
-     * Adds a new item to an existing subscription.
-     * @param subscriptionId The ID of the subscription.
-     * @param dto The item details to add.
-     * @return The created subscription item.
-     */
     @PostMapping("/{subscriptionId}/items")
     fun addItemToSubscription(
         @PathVariable subscriptionId: String,
@@ -92,11 +65,6 @@ class SubscriptionController(
         return ResponseEntity.ok(SubscriptionMapper.itemToResponse(item))
     }
 
-    /**
-     * Lists all items of a given subscription.
-     * @param subscriptionId The ID of the subscription.
-     * @return The list of subscription items.
-     */
     @GetMapping("/{subscriptionId}/items")
     fun listSubscriptionItems(
         @PathVariable subscriptionId: String,
@@ -105,13 +73,6 @@ class SubscriptionController(
         return ResponseEntity.ok(items.map { SubscriptionMapper.itemToResponse(it) })
     }
 
-    /**
-     * Updates an item of a subscription.
-     * @param subscriptionId The ID of the subscription.
-     * @param itemId The ID of the item to update.
-     * @param dto The updated item data.
-     * @return The updated subscription item.
-     */
     @PutMapping("/{subscriptionId}/items/{itemId}")
     fun updateSubscriptionItem(
         @PathVariable subscriptionId: String,
@@ -126,12 +87,6 @@ class SubscriptionController(
         return ResponseEntity.ok(SubscriptionMapper.itemToResponse(item))
     }
 
-    /**
-     * Removes an item from a subscription.
-     * @param subscriptionId The ID of the subscription.
-     * @param itemId The ID of the item to remove.
-     * @return No content if removed successfully.
-     */
     @DeleteMapping("/{subscriptionId}/items/{itemId}")
     fun removeSubscriptionItem(
         @PathVariable subscriptionId: String,

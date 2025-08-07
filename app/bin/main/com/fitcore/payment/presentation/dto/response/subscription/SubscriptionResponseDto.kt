@@ -6,6 +6,8 @@ data class SubscriptionResponseDto(
     val id: String,
     val code: String?,
     val planId: String,
+    val planName: String?,
+    val planValue: Int?,
     val customerId: String,
     val paymentMethod: String,
     val status: String?,

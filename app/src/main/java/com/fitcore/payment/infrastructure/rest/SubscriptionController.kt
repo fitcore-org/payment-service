@@ -15,15 +15,12 @@ import org.springframework.web.bind.annotation.*
  * All endpoints return messages and responses in English.
  */
 @RestController
-@RequestMapping("/api/subscriptions")
+@RequestMapping("/payment/api/subscriptions")
 class SubscriptionController(
     private val subscriptionService: SubscriptionService,
     private val pagarmeSubscriptionGatewayAdapter: PagarmeSubscriptionGatewayAdapter, // <- adapter injetado
 ) {
 
-    /**
-     * Creates a new subscription.
-     */
     @PostMapping
     fun createSubscription(
         @RequestBody dto: SubscriptionRequestDto,
@@ -34,27 +31,18 @@ class SubscriptionController(
             ),
         )
 
-    /**
-     * Retrieves a subscription by its unique identifier (Pagar.me espelhado).
-     */
     @GetMapping("/{id}")
     fun getSubscription(@PathVariable id: String): ResponseEntity<JsonNode> {
         val result = pagarmeSubscriptionGatewayAdapter.getSubscription(id)
         return ResponseEntity.ok(result)
     }
 
-    /**
-     * Lists all subscriptions (Pagar.me espelhado).
-     */
     @GetMapping
     fun listSubscriptions(): ResponseEntity<JsonNode> {
         val result = pagarmeSubscriptionGatewayAdapter.listSubscriptions()
         return ResponseEntity.ok(result)
     }
 
-    /**
-     * Cancels a subscription by its ID.
-     */
     @DeleteMapping("/{id}")
     fun cancelSubscription(
         @PathVariable id: String,
