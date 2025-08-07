@@ -6,6 +6,9 @@ import com.fitcore.payment.presentation.dto.CustomerDto
 import com.fitcore.payment.presentation.dto.AddressDto
 import java.util.*
 
+/**
+ * Maps CustomerDto to RoleEntity (for persistence).
+ */
 fun CustomerDto.toEntity(): RoleEntity =
     RoleEntity(
         id = this.id ?: UUID.randomUUID(),
@@ -22,6 +25,9 @@ fun CustomerDto.toEntity(): RoleEntity =
         serviceId = this.serviceId,
     )
 
+/**
+ * Maps RoleEntity (from database) to CustomerDto (transport layer).
+ */
 fun RoleEntity.toDto(): CustomerDto =
     CustomerDto(
         id = this.id,

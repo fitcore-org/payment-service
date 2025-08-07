@@ -7,12 +7,16 @@ import com.fitcore.payment.presentation.mapper.InvoiceMapper
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
+/**
+ * REST controller responsible for managing invoices.
+ * All endpoints are documented and return responses in English.
+ */
 @RestController
-@RequestMapping("/api/invoices")
+@RequestMapping("/payment/api/invoices")
 class InvoiceController(
     private val invoiceService: InvoiceService,
 ) {
-    // Criar fatura para um ciclo de assinatura específico
+
     @PostMapping("/subscriptions/{subscriptionId}/cycles/{cycleId}/pay")
     fun createInvoice(
         @PathVariable subscriptionId: String,
@@ -23,7 +27,6 @@ class InvoiceController(
         return ResponseEntity.ok(InvoiceMapper.toResponse(invoice))
     }
 
-    // Obter fatura por ID
     @GetMapping("/{invoiceId}")
     fun getInvoice(
         @PathVariable invoiceId: String,
@@ -32,7 +35,6 @@ class InvoiceController(
         return ResponseEntity.ok(InvoiceMapper.toResponse(invoice))
     }
 
-    // Listar faturas com filtros (todos opcionais)
     @GetMapping
     fun listInvoices(
         @RequestParam(required = false) status: String?,
@@ -53,7 +55,6 @@ class InvoiceController(
         return ResponseEntity.ok(invoices.map { InvoiceMapper.toResponse(it) })
     }
 
-    // Cancelar fatura
     @DeleteMapping("/{invoiceId}")
     fun cancelInvoice(
         @PathVariable invoiceId: String,

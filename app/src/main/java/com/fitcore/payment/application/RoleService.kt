@@ -9,6 +9,17 @@ import com.fitcore.payment.presentation.mapper.toEntity
 import org.springframework.stereotype.Service
 import java.util.*
 
+/**
+ * Service responsible for creating, updating and deleting roles.  It
+ * orchestrates persisting role entities locally as well as propagating
+ * changes to Pagar.me.  This implementation has been adjusted so that
+ * updates will always synchronise with Pagar.me: if a role does not yet
+ * have a serviceId associated (i.e. Pagar.me customer ID), a new
+ * customer will be created upon update and the returned identifier
+ * stored.  This prevents situations where calling PUT on /roles fails to
+ * update the external customer or where POST requests inadvertently
+ * update a record without synchronising with Pagar.me.
+ */
 @Service
 class RoleService(
     private val roleRepository: RoleRepository,
@@ -23,11 +34,9 @@ class RoleService(
         return saved.toDomain()
     }
 
-    fun getRoleById(id: UUID): Role? =
-        roleRepository.findById(id).map { it.toDomain() }.orElse(null)
+    fun getRoleById(id: UUID): Role? = roleRepository.findById(id).map { it.toDomain() }.orElse(null)
 
-    fun getAllRoles(): List<Role> =
-        roleRepository.findAll().map { it.toDomain() }
+    fun getAllRoles(): List<Role> = roleRepository.findAll().map { it.toDomain() }
 
     fun updateRole(id: UUID, updated: Role): Role? {
         val existing = roleRepository.findById(id)
@@ -44,8 +53,14 @@ class RoleService(
             entity.type = updated.type
             entity.gender = updated.gender
             roleRepository.save(entity)
-            if (!entity.serviceId.isNullOrBlank()) {
-                pagarmeApi.updateCustomer(entity.serviceId!!, entity)
+
+            val currentServiceId = entity.serviceId
+            if (currentServiceId.isNullOrBlank()) {
+                val newServiceId = pagarmeApi.createCustomer(entity)
+                entity.serviceId = newServiceId
+                roleRepository.save(entity)
+            } else {
+                pagarmeApi.updateCustomer(currentServiceId, entity)
             }
             return entity.toDomain()
         }

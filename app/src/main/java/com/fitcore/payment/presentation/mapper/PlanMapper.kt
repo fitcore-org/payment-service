@@ -5,7 +5,14 @@ import com.fitcore.payment.domain.model.PlanItem
 import com.fitcore.payment.domain.model.PricingScheme
 import com.fitcore.payment.presentation.dto.*
 
+/**
+ * Mapper object for converting between Plan/PlanItem domain models and DTOs.
+ */
 object PlanMapper {
+
+    /**
+     * Converts PlanRequestDto (API input) to Plan (domain model).
+     */
     fun toDomain(dto: PlanRequestDto): Plan =
         Plan(
             id = null,
@@ -29,6 +36,9 @@ object PlanMapper {
             status = dto.status,
         )
 
+    /**
+     * Converts Plan (domain model) to PlanResponseDto (API output).
+     */
     fun toResponse(plan: Plan): PlanResponseDto =
         PlanResponseDto(
             id = plan.id ?: "",
@@ -52,6 +62,9 @@ object PlanMapper {
             status = plan.status,
         )
 
+    /**
+     * Converts PlanItemRequestDto (API input for new items) to PlanItem (domain model).
+     */
     fun toDomainItem(dto: PlanItemRequestDto): PlanItem =
         PlanItem(
             name = dto.name,
@@ -62,6 +75,9 @@ object PlanMapper {
             status = null,
         )
 
+    /**
+     * Converts PlanItemUpdateDto (API input for update) to PlanItem (domain model).
+     */
     fun toDomainItem(dto: PlanItemUpdateDto): PlanItem =
         PlanItem(
             name = dto.name,
@@ -72,6 +88,9 @@ object PlanMapper {
             status = dto.status,
         )
 
+    /**
+     * Converts PlanItem (domain model) to PlanItemDto (API output).
+     */
     fun toDtoItem(item: PlanItem): PlanItemDto =
         PlanItemDto(
             id = item.id,
@@ -83,6 +102,10 @@ object PlanMapper {
             status = item.status,
         )
 
+    /**
+     * Converts PlanItemDto (API output) to PlanItem (domain model).
+     * Private, for internal mapper use.
+     */
     private fun toDomainItem(dto: PlanItemDto): PlanItem =
         PlanItem(
             id = dto.id,
@@ -94,12 +117,18 @@ object PlanMapper {
             status = dto.status,
         )
 
+    /**
+     * Converts PricingSchemeDto (DTO) to PricingScheme (domain model).
+     */
     private fun toDomainPricingScheme(dto: PricingSchemeDto): PricingScheme =
         PricingScheme(
             schemeType = dto.schemeType,
             price = dto.price,
         )
 
+    /**
+     * Converts PricingScheme (domain model) to PricingSchemeDto (DTO).
+     */
     private fun toDtoPricingScheme(pricingScheme: PricingScheme): PricingSchemeDto =
         PricingSchemeDto(
             schemeType = pricingScheme.schemeType,

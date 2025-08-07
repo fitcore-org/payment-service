@@ -6,31 +6,42 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.util.*
 
+/**
+ * REST controller responsible for managing customers.
+ * All endpoints and responses are in English.
+ */
 @RestController
-@RequestMapping("/api/customers")
+@RequestMapping("/payment/api/customers")
 class CustomerController(
     private val customerService: CustomerService,
 ) {
+
     @PostMapping
     fun create(
         @RequestBody dto: CustomerDto,
-    ) = ResponseEntity.ok(customerService.createCustomer(dto))
+    ): ResponseEntity<CustomerDto> =
+        ResponseEntity.ok(customerService.createCustomer(dto))
 
     @GetMapping("/{id}")
     fun getById(
         @PathVariable id: UUID,
-    ) = customerService.getCustomerById(id)?.let { ResponseEntity.ok(it) }
-        ?: ResponseEntity.notFound().build()
+    ): ResponseEntity<CustomerDto> =
+        customerService.getCustomerById(id)
+            ?.let { ResponseEntity.ok(it) }
+            ?: ResponseEntity.notFound().build()
 
     @GetMapping
-    fun list() = ResponseEntity.ok(customerService.listCustomers())
+    fun list(): ResponseEntity<List<CustomerDto>> =
+        ResponseEntity.ok(customerService.listCustomers())
 
     @PutMapping("/{id}")
     fun update(
         @PathVariable id: UUID,
         @RequestBody dto: CustomerDto,
-    ) = customerService.updateCustomer(id, dto)?.let { ResponseEntity.ok(it) }
-        ?: ResponseEntity.notFound().build()
+    ): ResponseEntity<CustomerDto> =
+        customerService.updateCustomer(id, dto)
+            ?.let { ResponseEntity.ok(it) }
+            ?: ResponseEntity.notFound().build()
 
     @DeleteMapping("/{id}")
     fun delete(

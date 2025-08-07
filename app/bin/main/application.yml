@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: payment-service    
+
+  datasource:
+    url: jdbc:postgresql://postgres:5432/auth
+    username: ${DB_USER:fitcore}
+    password: ${DB_PASS:fitcorepass}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+  rabbitmq:
+    host: rabbitmq              
+    port: 5672
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASS:admin}
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: oficial.fitcore@gmail.com
+    password: jnci tygt rroj xavc
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+        from: "FitCore oficial.fitcore@gmail.com"
+
+pagarme:
+  api-key: ${PAGARME_API_KEY:sk_test_18d0d43fa4374be69c1774196abebca0}  
+  base-url: "https://api.pagar.me/core/v5"
+
+server:
+  port: 8080
+
+minio:
+  url: http://minio:9000/      
+  access-key: ${MINIO_USER}
+  secret-key: ${MINIO_PASS}
+  bucket: fitcore
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: DEBUG
+    org.springframework.amqp: DEBUG
+    org.springframework.amqp.rabbit: DEBUG
+    org.springframework.amqp.rabbit.core: DEBUG
+    org.springframework.amqp.rabbit.connection: DEBUG
+    org.springframework.web.client.RestTemplate: DEBUG
+    org.apache.http: DEBUG
+    org.apache.http.wire: DEBUG

@@ -10,6 +10,13 @@ import com.fitcore.payment.presentation.dto.SubscriptionRequestDto
 import com.fitcore.payment.presentation.dto.SubscriptionResponseDto
 import java.time.LocalDate
 
+/**
+ * Mapper responsible for converting between request/response DTOs and
+ * domain models for subscriptions.  It has been updated to include
+ * planName and planValue when mapping from the domain model to the
+ * response DTO so that these values returned from Pagar.me are
+ * propagated back to API callers.
+ */
 object SubscriptionMapper {
     fun toDomain(dto: SubscriptionRequestDto) =
         Subscription(
@@ -30,6 +37,8 @@ object SubscriptionMapper {
             id = model.id ?: "",
             code = model.code,
             planId = model.planId,
+            planName = model.planName,
+            planValue = model.planValue,
             customerId = model.customerId,
             paymentMethod = model.paymentMethod,
             status = model.status,
