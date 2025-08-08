@@ -3,6 +3,8 @@ package com.fitcore.payment.application
 import com.fitcore.payment.domain.model.Subscription
 import com.fitcore.payment.domain.model.SubscriptionItem
 import com.fitcore.payment.domain.repository.SubscriptionGatewayPort
+import com.fitcore.payment.infrastructure.messaging.EmployeeEventPublisher
+import com.fitcore.payment.presentation.dto.SubscriptionRequestDto
 import org.springframework.stereotype.Service
 import com.fasterxml.jackson.databind.JsonNode
 
@@ -13,9 +15,27 @@ import com.fasterxml.jackson.databind.JsonNode
 @Service
 class SubscriptionService(
     private val subscriptionGatewayPort: SubscriptionGatewayPort,
+    private val employeeEventPublisher: EmployeeEventPublisher,
 ) {
     fun createSubscription(subscription: Subscription): Subscription {
-        return subscriptionGatewayPort.createSubscription(subscription)
+        val createdSubscription = subscriptionGatewayPort.createSubscription(subscription)
+        
+        // Publish event to RabbitMQ
+        val subscriptionRequestDto = SubscriptionRequestDto(
+            code = createdSubscription.code,
+            planId = createdSubscription.planId,
+            customerId = createdSubscription.customerId,
+            paymentMethod = createdSubscription.paymentMethod,
+            installments = createdSubscription.installments,
+            startAt = createdSubscription.startAt?.toString(),
+            metadata = createdSubscription.metadata,
+            cardId = createdSubscription.cardId,
+            cardToken = createdSubscription.cardToken
+        )
+        
+        employeeEventPublisher.publishRoleChangeEvent(subscriptionRequestDto)
+        
+        return createdSubscription
     }
 
     fun cancelSubscription(id: String) = subscriptionGatewayPort.cancelSubscription(id)
