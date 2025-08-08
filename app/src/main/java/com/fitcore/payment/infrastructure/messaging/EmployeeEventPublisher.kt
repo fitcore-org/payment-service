@@ -9,7 +9,8 @@ class EmployeeEventPublisher(
 ) {
     fun publishRoleChangeEvent(event: Any) {
         rabbitTemplate.convertAndSend(
-            RabbitMQConfig.PLAN_SUBSCRIPTION_PAID, // routingKey igual ao nome da fila
+            RabbitMQConfig.PLAN_SUBSCRIPTION_EXCHANGE,
+            RabbitMQConfig.PLAN_SUBSCRIPTION_ROUTING_KEY,
             event
         )
     }

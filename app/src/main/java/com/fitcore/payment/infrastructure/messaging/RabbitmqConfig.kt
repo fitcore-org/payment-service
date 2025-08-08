@@ -14,11 +14,32 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class RabbitMQConfig {
     companion object {
-        const val PLAN_SUBSCRIPTION_PAID = "plan-subscription-paid"
+        const val PLAN_SUBSCRIPTION_EXCHANGE = "plan-subscription-exchange"
+        const val PLAN_SUBSCRIPTION_ROUTING_KEY = "plan.subscription.paid"
+        const val ANALYTICS_PLAN_SUBSCRIPTION_QUEUE = "analytics-plan-subscription-paid"
+        const val STUDENT_PLAN_SUBSCRIPTION_QUEUE = "student-plan-subscription-paid"
     }
 
     @Bean
-    fun employeeRoleChangedQueue() = Queue(PLAN_SUBSCRIPTION_PAID, true)
+    fun planSubscriptionExchange() = TopicExchange(PLAN_SUBSCRIPTION_EXCHANGE)
+
+    @Bean
+    fun analyticsPlanSubscriptionQueue() = Queue(ANALYTICS_PLAN_SUBSCRIPTION_QUEUE, true)
+
+    @Bean
+    fun studentPlanSubscriptionQueue() = Queue(STUDENT_PLAN_SUBSCRIPTION_QUEUE, true)
+
+    @Bean
+    fun analyticsBinding(): Binding = BindingBuilder
+        .bind(analyticsPlanSubscriptionQueue())
+        .to(planSubscriptionExchange())
+        .with(PLAN_SUBSCRIPTION_ROUTING_KEY)
+
+    @Bean
+    fun studentBinding(): Binding = BindingBuilder
+        .bind(studentPlanSubscriptionQueue())
+        .to(planSubscriptionExchange())
+        .with(PLAN_SUBSCRIPTION_ROUTING_KEY)
 
     @Bean
     fun rabbitTemplate(connectionFactory: ConnectionFactory): RabbitTemplate {
